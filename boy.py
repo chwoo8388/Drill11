@@ -133,6 +133,8 @@ class Boy:
             if event.key == SDLK_a and not self.behavior_state.is_auto_running:
                 self.behavior_state = AutoRunState()
             if event.key in (SDLK_LEFT, SDLK_RIGHT, SDLK_UP):
+                if self.behavior_state.is_auto_running:
+                    self.behavior_state = BoyState()
                 is_new_press = event.key not in self.pressed_keys
                 self.pressed_keys.add(event.key)
                 if event.key == SDLK_UP and is_new_press and not self.is_jumping:
