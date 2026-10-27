@@ -15,10 +15,14 @@ from transitions import Machine
 
 
 class Boy:
+    LEFT_WALL = 50
+    RIGHT_WALL = 750
+
     def __init__(self):
         self.x, self.y = 400, 90
         self.frame = 0
         self.face_dir = 1
+        self.auto_direction = 1
         self.is_moving = False
         self.auto_running = False
         self.pressed_keys = set()
@@ -51,12 +55,22 @@ class Boy:
         if self.is_lying:
             return
 
-        move_x = 1 if self.auto_running else (
+        move_x = self.auto_direction if self.auto_running else (
             int(SDLK_RIGHT in self.pressed_keys) - int(SDLK_LEFT in self.pressed_keys)
         )
         self.is_moving = move_x != 0 or self.is_jumping
         self.x += move_x * 5
-        if move_x != 0:
+        if self.x >= self.RIGHT_WALL:
+            self.x = self.RIGHT_WALL
+            if self.auto_running:
+                self.auto_direction = -1
+        elif self.x <= self.LEFT_WALL:
+            self.x = self.LEFT_WALL
+            if self.auto_running:
+                self.auto_direction = 1
+        if self.auto_running:
+            self.face_dir = self.auto_direction
+        elif move_x != 0:
             self.face_dir = 1 if move_x > 0 else -1
 
         if self.is_jumping:
