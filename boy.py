@@ -14,6 +14,29 @@ from pico2d import (
 from transitions import Machine
 
 
+class BoyState:
+    is_auto_running = False
+
+    def get_move_x(self, boy):
+        return int(SDLK_RIGHT in boy.pressed_keys) - int(SDLK_LEFT in boy.pressed_keys)
+
+    def on_wall_collision(self):
+        pass
+
+
+class AutoRunState(BoyState):
+    is_auto_running = True
+
+    def __init__(self):
+        self.direction = 1
+
+    def get_move_x(self, boy):
+        return self.direction
+
+    def on_wall_collision(self):
+        self.direction *= -1
+
+
 class Boy:
     LEFT_WALL = 50
     RIGHT_WALL = 750
@@ -22,9 +45,8 @@ class Boy:
         self.x, self.y = 400, 90
         self.frame = 0
         self.face_dir = 1
-        self.auto_direction = 1
+        self.behavior_state = BoyState()
         self.is_moving = False
-        self.auto_running = False
         self.pressed_keys = set()
         self.ground_y = self.y
         self.jump_velocity = 0
@@ -47,7 +69,7 @@ class Boy:
 
     def update(self):
         now = time.monotonic()
-        if self.pressed_keys or self.is_jumping or self.auto_running:
+        if self.pressed_keys or self.is_jumping or self.behavior_state.is_auto_running:
             self.started_at = now
             self.is_lying = False
         elif now - self.started_at >= 5:
@@ -55,21 +77,17 @@ class Boy:
         if self.is_lying:
             return
 
-        move_x = self.auto_direction if self.auto_running else (
-            int(SDLK_RIGHT in self.pressed_keys) - int(SDLK_LEFT in self.pressed_keys)
-        )
+        move_x = self.behavior_state.get_move_x(self)
         self.is_moving = move_x != 0 or self.is_jumping
         self.x += move_x * 5
         if self.x >= self.RIGHT_WALL:
             self.x = self.RIGHT_WALL
-            if self.auto_running:
-                self.auto_direction = -1
+            self.behavior_state.on_wall_collision()
         elif self.x <= self.LEFT_WALL:
             self.x = self.LEFT_WALL
-            if self.auto_running:
-                self.auto_direction = 1
-        if self.auto_running:
-            self.face_dir = self.auto_direction
+            self.behavior_state.on_wall_collision()
+        if self.behavior_state.is_auto_running:
+            self.face_dir = self.behavior_state.get_move_x(self)
         elif move_x != 0:
             self.face_dir = 1 if move_x > 0 else -1
 
@@ -88,8 +106,8 @@ class Boy:
             self.is_lying = False
             self.started_at = time.monotonic()
         if event.type == SDL_KEYDOWN:
-            if event.key == SDLK_a:
-                self.auto_running = True
+            if event.key == SDLK_a and not self.behavior_state.is_auto_running:
+                self.behavior_state = AutoRunState()
             if event.key in (SDLK_LEFT, SDLK_RIGHT, SDLK_UP):
                 is_new_press = event.key not in self.pressed_keys
                 self.pressed_keys.add(event.key)
