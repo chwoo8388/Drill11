@@ -16,6 +16,8 @@ from transitions import Machine
 
 class BoyState:
     is_auto_running = False
+    movement_speed = 5
+    size_multiplier = 1
 
     def get_move_x(self, boy):
         return int(SDLK_RIGHT in boy.pressed_keys) - int(SDLK_LEFT in boy.pressed_keys)
@@ -26,6 +28,8 @@ class BoyState:
 
 class AutoRunState(BoyState):
     is_auto_running = True
+    movement_speed = 10
+    size_multiplier = 1.5
 
     def __init__(self):
         self.direction = 1
@@ -38,8 +42,8 @@ class AutoRunState(BoyState):
 
 
 class Boy:
-    LEFT_WALL = 50
-    RIGHT_WALL = 750
+    CANVAS_WIDTH = 800
+    SPRITE_SIZE = 100
 
     def __init__(self):
         self.x, self.y = 400, 90
@@ -79,12 +83,15 @@ class Boy:
 
         move_x = self.behavior_state.get_move_x(self)
         self.is_moving = move_x != 0 or self.is_jumping
-        self.x += move_x * 5
-        if self.x >= self.RIGHT_WALL:
-            self.x = self.RIGHT_WALL
+        self.x += move_x * self.behavior_state.movement_speed
+        half_width = self.SPRITE_SIZE * self.behavior_state.size_multiplier / 2
+        left_wall = half_width
+        right_wall = self.CANVAS_WIDTH - half_width
+        if self.x >= right_wall:
+            self.x = right_wall
             self.behavior_state.on_wall_collision()
-        elif self.x <= self.LEFT_WALL:
-            self.x = self.LEFT_WALL
+        elif self.x <= left_wall:
+            self.x = left_wall
             self.behavior_state.on_wall_collision()
         if self.behavior_state.is_auto_running:
             self.face_dir = self.behavior_state.get_move_x(self)
@@ -121,13 +128,14 @@ class Boy:
         self.frame = (self.frame + 1) % 8
 
     def draw(self):
+        size = self.SPRITE_SIZE * self.behavior_state.size_multiplier
         if self.is_lying:
             self.image.clip_composite_draw(
                 self.frame * 100, 300 if self.face_dir == 1 else 200,
-                100, 100, -math.pi / 2, '', self.x, self.y, 100, 100,
+                100, 100, -math.pi / 2, '', self.x, self.y, size, size,
             )
             return
         row = 100 if self.is_moving else 300
         if self.face_dir == -1:
             row -= 100
-        self.image.clip_draw(self.frame * 100, row, 100, 100, self.x, self.y)
+        self.image.clip_draw(self.frame * 100, row, 100, 100, self.x, self.y, size, size)
