@@ -19,6 +19,9 @@ class BoyState:
     movement_speed = 5
     size_multiplier = 1
 
+    def is_expired(self, now):
+        return False
+
     def get_move_x(self, boy):
         return int(SDLK_RIGHT in boy.pressed_keys) - int(SDLK_LEFT in boy.pressed_keys)
 
@@ -30,9 +33,14 @@ class AutoRunState(BoyState):
     is_auto_running = True
     movement_speed = 10
     size_multiplier = 1.5
+    duration = 5
 
     def __init__(self):
         self.direction = 1
+        self.started_at = time.monotonic()
+
+    def is_expired(self, now):
+        return now - self.started_at >= self.duration
 
     def get_move_x(self, boy):
         return self.direction
@@ -73,6 +81,15 @@ class Boy:
 
     def update(self):
         now = time.monotonic()
+        if self.behavior_state.is_expired(now):
+            self.behavior_state = BoyState()
+            self.pressed_keys.clear()
+            self.is_jumping = False
+            self.jump_velocity = 0
+            self.y = self.ground_y
+            self.is_moving = False
+            self.started_at = now
+
         if self.pressed_keys or self.is_jumping or self.behavior_state.is_auto_running:
             self.started_at = now
             self.is_lying = False
